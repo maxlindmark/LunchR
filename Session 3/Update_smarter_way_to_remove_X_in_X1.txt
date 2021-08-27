@@ -1,0 +1,43 @@
+#---- Kate Wootton:
+
+dat <- dat %>% 
+  mutate(reading_no_num= ifelse(reading_no=="X1", 1,
+                                ifelse(reading_no=="X2", 2,
+                                ifelse(reading_no=="X3", 3,
+                                ifelse(reading_no=="X4", 4,
+                                ifelse(reading_no=="X5", 5,
+                                ifelse(reading_no=="X6", 6,
+                                ifelse(reading_no=="X7", 7,
+                                ifelse(reading_no=="X8", 8,
+                                ifelse(reading_no=="X9", 9, NA)))))))))) 
+
+You could have this:
+
+dat_gsub <- dat %>%
+  mutate(reading_no_gsub = as.numeric(gsub("X","",reading_no)))
+
+
+#---- Nataliia Kulatska
+
+In the mutate example, since all values in the column have same pattern: "Xn", we can reach the same outcome using one-line code with substr:
+
+dat <- dat %>% mutate(reading_no_num=as.numeric(substr(reading_no, 2,3))) # extract characters starting from position 2 and ending at position 3 (in case we have age10) and turning it to number (as.integer will do the same)
+
+
+#---- Mårten Erlandsson
+
+Take the second value from a string an make a numeric value
+
+dat <- dat %>% 
+  mutate(reading_no_num= as.numeric(substring(dat$reading_no, 2)))
+
+
+Using the parse_number() in the readr-package, we can extract all the numbers from a text
+
+dat <- dat %>% 
+  mutate(reading_no_num2= parse_number(dat$reading_no))
+
+
+
+
+

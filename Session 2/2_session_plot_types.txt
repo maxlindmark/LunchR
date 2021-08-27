@@ -1,0 +1,434 @@
+########
+# 2018.03.14 LunchR - Second session: Digging deeper into data exploration in R using base R and ggplot; focus on different graph styles
+########
+
+#-- It's often a good idea to start by clearing the workspace. You might have old variables saved in the workspace that you don't want to reuse by mistake! Remember though, this little function does not clear everything, like loaded packages. To do a full clear, type q(), which will exit the workspace completely
+rm(list=ls(all=TRUE))
+
+#-- Read in libraries:
+# Today, we will use several new packages. If you haven't installed them before, use the "install.packages" function below 
+# (remove the # in fron of the function and press crtl+enter to install them). 
+
+# Packages:
+
+# install.packages("ggplot2")
+# install.packages("gridExtra")
+# install.packages("ggridges")
+# install.packages("dplyr")
+# install.packages("maps")
+# install.packages("mapplots")
+# install.packages("jpeg")
+# install.packages("png")
+
+# If/when you have installed these packages, load them using the library() functions below: 
+
+library(ggplot2)
+library(gridExtra)
+library(ggridges)
+library(dplyr)
+library(maps)
+library(mapplots)
+library(jpeg) 
+library(png) 
+
+# Let's start with a little recap from last session, session 1:
+
+# Create the tidy data (same as last time):
+
+#-- We create two dataframes called "tidy" (long data). Long means that each row is a unique observation, 
+# and the grouping variable is an element in a column. In the wide data, groups are in different columns.
+
+#-- Generate data: 10 random uniform variables
+
+group1 <- runif(10)
+group2 <- runif(10) + 0.2 # Make one group slightly larger
+
+
+head(group1)
+
+
+# Now use the same random variables but bind them together in a "tidy/long" data frame called tidy
+
+tidy <- data.frame(x = rep(1:10, 2), 
+                   y = c(group1, group2), 
+                   group = c(rep("a", 10), rep("b", 10)))
+head(tidy)
+
+# Default GGplot:
+
+ggplot(data = tidy, aes(x, y)) + 
+  geom_point()
+
+# Default plot with colors based on group:
+
+ggplot(data = tidy, aes(x, y, colour = group)) + 
+  geom_point(size=5)
+
+# Same as above but using base R.
+
+plot(y ~ x, data = tidy, col=group, pch=16, cex=3) 
+
+# GGplot with colour and lines:
+
+ggplot(data = tidy, aes(x, y, linetype = group, colour = group)) +
+  geom_point(size=5) +
+  geom_line(size=2, alpha=0.5)
+
+# GGplot splitted into two plots:
+
+ggplot(data = tidy, aes(x, y, linetype = group, colour = group)) +
+  geom_point(size=5) +
+  geom_line(size=2, alpha=0.5)+
+  facet_wrap(~group)
+
+# Base R splitted into two plots with lines
+
+par(mfrow=c(1,2))
+plot(y ~ x, data = subset(tidy, group=="a"), type="b", col="red") 
+plot(y ~ x, data = subset(tidy, group=="b"), type="b", col="black", lty=2) 
+par(mfrow=c(1,1))
+
+# End recap:
+
+# Summary recap from session 1: The grammar, amount of code and apperance of Base R plots and GGplots differ alot!
+# -> Session 2. Let's have a look at these differences in more detail. 
+
+
+# Today, we will use aa larger dataset. The dataset "iris" is a built in datatset in R which we will use. 
+
+# Lets save the data into a data frame called iris:
+
+iris<-iris # save the data into a data frame. Have a look in the top-right corner of your screen. 
+# The data set is 150 rows long with 5 columns
+
+head(iris) # look at the first 6 rows of the dataset
+tail(iris) # look at the last 6 rows of the datatset
+str(iris)  # An overview of the data structure 
+iris # look at the whole dataset. Works because it is a small datatset but imagine if it was a dataset with 10.000 observations.. 
+# = plot the data!
+
+# lets get to know our datatset:
+
+# The dataset contains 5 columns and 150 rows (look either in the topr-right corner or use the command str())
+
+# First, lets have a look at how sepal length relates to the sepal width:
+
+names(iris)
+
+## Base R plot: # TIPS! copy paste the names within in the bunny ears (" ") from the console:
+
+plot(Sepal.Width~Sepal.Length, data=iris)
+
+## GGplot:
+
+ggplot(data=iris, aes(x = Sepal.Length, y = Sepal.Width))+
+            geom_point()
+
+# Is the relationship similar in the three species that we have in the dataset? 
+
+## Base R plot
+plot(Sepal.Width~Sepal.Length, col=Species, data=iris) 
+
+## GGplot
+ggplot(data=iris, aes(x = Sepal.Length, y = Sepal.Width, colour=Species))+ 
+  geom_point()
+
+    # Is there any difference between the two plots? Yes- can you see it?
+
+# To look at the relationship between sepal length and sepal width, it would be nice to see how they correlate so.. let's do it:
+
+## GGplot
+ggplot(data=iris, aes(x = Sepal.Length, y = Sepal.Width, colour=Species))+
+  geom_point()+
+  stat_smooth(method="lm")
+
+  # What you se here are linear model fits and their 95% Confidence interval (grey area around the lines) 
+  # beween sepal.length vs sepal.weight for our 3 species. 
+
+##  To do this in Base R
+  
+    # 1. First, we need to fit linear models for sepal.length vs.sepal.width within each species (a lot of code and subsetting)
+    # 2. We need to plot the raw data
+    # 3. We need to add the model fits to the plots using the command "lines()" and/or ablines
+    # 4. To add the confidence interval, we need to calculate it first (time consuming and more code) and then plot them
+# This takes time and alot of code (!) but we will do this in session 4 because the plot will look very nice in the end..
+
+## We can also separate the three species into three windows
+ggplot(data=iris, aes(x = Sepal.Length, y = Sepal.Width, colour=Species))+
+  geom_point()+
+  stat_smooth(method="lm")+
+  facet_wrap(~Species)
+
+# We can change so that the y-axis are not identical in all three plots:
+
+ggplot(data=iris, aes(x = Sepal.Length, y = Sepal.Width, colour=Species))+
+  geom_point()+
+  stat_smooth(method="lm")+
+  facet_wrap(~Species, scales="free_y")
+
+# And we can also change the y- and x-axis simultaneously:
+
+ggplot(data=iris, aes(x = Sepal.Length, y = Sepal.Width, colour=Species))+
+  geom_point()+
+  stat_smooth(method="lm")+
+  facet_wrap(~Species, scales="free") 
+
+# Be carefull! This plot tell another story at a first glance (the relationship looks almost identical in all three species), 
+# compare to the first one:
+
+ggplot(data=iris, aes(x = Sepal.Length, y = Sepal.Width, colour=Species))+
+  geom_point()+
+  stat_smooth(method="lm")
+
+
+# What if the relationship is not linear? - Use the built in auto function and have a look:
+
+ggplot(data=iris, aes(x = Sepal.Length, y = Sepal.Width, colour=Species))+
+  geom_point()+
+  stat_smooth(method="auto")
+
+# Or fit GAM models:
+
+ggplot(data=iris, aes(x = Sepal.Length, y = Sepal.Width, colour=Species))+
+  geom_point()+
+  stat_smooth(method="gam")
+
+# More on this is in session 3.
+
+# Next step - what if we want to plot continous data (length) vs. categorical data (age, species, area)?
+
+# One common method used for this are Boxplots:
+
+# Base R
+
+boxplot(Sepal.Length~Species,data=iris,
+        xlab="Species", ylab="Sepal length")
+
+# GGplot
+
+ggplot(data=iris, aes(x=Species, y=Sepal.Length))+
+  geom_boxplot()
+
+# But how does the underlaying data look like?
+
+# Base R
+
+boxplot(Sepal.Length~Species,data=iris,
+        xlab="Species", ylab="Sepal length")
+points(Sepal.Length~Species, data=iris) # Add the points.
+
+# The added points can now overlap other points so lets add some noice to these points using tje jitter() function:
+
+boxplot(Sepal.Length~Species,data=iris,
+        xlab="Species", ylab="Sepal length")
+points(jitter(Sepal.Length, factor=1)~jitter(as.numeric(Species), factor=1), data=iris)
+
+## GGplot
+
+ggplot(data=iris, aes(x=Species, y=Sepal.Length))+
+  geom_boxplot()+
+  geom_point(position = position_jitter(w = 0.2, h = 0)) # or just geom_point() but hard to see all the data points then..
+
+## Lets make this graph look even better:
+
+ggplot(data=iris, aes(x=Species, y=Sepal.Length, colour=Species))+ 
+  geom_boxplot(outlier.colour="NA")+
+  geom_point(position = position_jitter(w = 0.2, h = 0), alpha=0.5, size=3)+ 
+  theme_bw()
+
+# What if we are interested in the distribution of these different variables? 
+# We can investigate those using histograms:
+
+# Base R
+
+hist(iris$Sepal.Length)
+hist(iris$Sepal.Width)
+
+# Combine the two plots:
+par(mfrow=c(1,2)) # This tells R to plot 2 plots next to each other, 1 row, 2 columns
+hist(iris$Sepal.Length)
+hist(iris$Sepal.Width)
+par(mfrow=c(1,1))
+
+## GGplot2
+
+ggplot(data=iris, aes(x=Sepal.Width))+
+  geom_histogram()
+
+ggplot(data=iris, aes(x=Sepal.Length))+
+  geom_histogram()
+
+## Looks ugly! But look at the message in the console. What if we chnage the bin size? 
+
+ggplot(data=iris, aes(x=Sepal.Width))+
+  geom_histogram(binwidth=0.2)
+
+ggplot(data=iris, aes(x=Sepal.Length))+
+  geom_histogram(binwidth=0.2)
+
+# Still, these do not look good using ggplot2 but they look good in base R. But, if you add more information to ggplot2, 
+# this is what the histograms could look like:
+
+# Sepal.width
+
+ggplot(data=iris, aes(x=Sepal.Width))+
+geom_histogram(binwidth=0.2, color="black", aes(fill=Species))
+
+
+# Sepal.length
+
+ggplot(data=iris, aes(x=Sepal.Length))+
+  geom_histogram(binwidth=0.2, color="black", aes(fill=Species))
+
+
+# Combine these 2 plots into the same window like we did for the Base R plots:
+
+Sepal_Width_Hist<-ggplot(data=iris, aes(x=Sepal.Width))+
+  geom_histogram(binwidth=0.2, color="black", aes(fill=Species))
+
+
+Sepal_Length_Hist<-ggplot(data=iris, aes(x=Sepal.Length))+
+  geom_histogram(binwidth=0.2, color="black", aes(fill=Species))
+
+# Use the function grid.arrange() from the package gridExtra to create a multipanel ggplot:
+
+grid.arrange(Sepal_Length_Hist,Sepal_Width_Hist, ncol=2, nrow=1) # grid.arrange is a function from the gridExtra package
+
+# compare:
+
+x11()
+par(mfrow=c(1,2)) # This tells R to plot 2 plots next to each other, 1 row, 2 columns
+hist(iris$Sepal.Length)
+hist(iris$Sepal.Width)
+par(mfrow=c(1,1))
+
+# Again, if you would use either Base R or GGplot2 for plots depends on the purpose of the plot.
+
+# You can also use ridge-plots, using the function geom_density_ridges() from the package "ggridges" if you want to compare distributions:
+
+
+ggplot(iris, aes(x = Sepal.Length, y = Species, fill=Species)) + 
+  geom_density_ridges(alpha=0.3) +
+  theme_bw()
+
+ggplot(iris, aes(x = Sepal.Length, y = Species, fill=Species)) + 
+  geom_density_ridges(alpha=0.3, stat = "binline", bins = 20) +
+  theme_bw()
+
+### 
+
+# Often you want to plot only parts of your data, i.e., you will need to filter out the data you are interested in. This used
+# to be quite hard in R but this is not the case any more: 
+
+# Lets say we only want to compare the sepal length dsitribution between the two species called "Setosa" and "virginica", 
+# this is how you can do it using the package dplyr and the "pipe" function:
+
+
+levels(iris$Species) # This command tells us the names of the different species in the iris dataset. 
+# We want "Setosa" and "virginica" : 
+
+iris %>% 
+  filter(Species %in% c("setosa","virginica")) %>% 
+           ggplot(., aes(x = Sepal.Length, y = Species, fill=Species)) + # Note the . in the begining. This is because we are in a pipe ( %>% )
+           geom_density_ridges(alpha=0.3) +
+           theme_bw()
+           
+ggplot(iris, aes(x = Sepal.Length, y = Species, fill=Species)) + 
+  geom_density_ridges(alpha=0.3) +
+  theme_bw()
+
+# In the next two sessions, we will use pipes alot since they very powerful for data handling, summaries and for producing ggplots
+
+# R can also be used to produce maps uisng different packages. Here we will use packages "maps" and "mapplots". 
+# In the next sessions, we will also use ggplot2 for producing maps. 
+
+
+
+par(mar=c(2,2,2,2))
+map(database = 'world',    
+    xlim = c(5, 28), # Latitude
+    ylim = c(50, 68), # Longitude
+    fill = T,
+    col = 'grey',
+    resolution = 0,
+    bg = 'white',
+    xlab="Longitude",
+    ylab="Latitude")
+
+map.axes()   # Add axis
+draw.rect()  # Add .... ? 
+points(x=11.4, y=58.3, cex=3, col="blue",pch=16) # Add a point
+text(x=11.4, y=59.3, cex=3, col="blue",pch=16,label="Lysekil") # Add a text
+axis(1, at=15 ,lab="Longitude", line=1, col="white") # add axis labels
+axis(2, at=58 ,lab="Latitude", line=1, las=3,col="white") # add axis labels
+
+# We might also want to add an illustration to the map (or any other plot). 
+
+# As we have pointed out the location of the lab working mainly with marine fish at SLU-Aqua, a cod would be perfect to add to this map!
+# For this, we need the package "jpeg" or "png" depending on the picture format.
+
+# Download the picture from the google drive or from here: 
+
+# http://phylopic.org/image/bba1800a-dd86-451d-a79b-c5944cfe5231/ 
+
+# http://phylopic.org/ is a great webpage for species illustrations and they are free, but the page is very very slow.. 
+
+# Save it to your computer and remember where you saved it. Name it: "cod_lunchR_session2.png" (or download it from the google drive).
+
+# Before we can plot the picture, we need to tell R where the picture is stored on your computer. 
+# This is how we tell R where the picture is stored:
+
+# Lets go to the bottom right panel in Rstudio and click on "Files". ->
+# Now, you see all the files on your computer. -> 
+# Click all the way to the folder where you saved the picture. ->
+# When you see the file in the folder, press the cogwheel and "More" tab. ->
+# Select the alternative "Set As Working Directory".
+
+# If you do not use Rstudio you can use the command "setwd()" to specify where the picture is stored. ->
+
+# setwd("\\\\storage-og.slu.se/home$/phja0001/My Documents/Philip/R/LunchR") 
+# If you do not know how to find this gateway, ask us and we will show you after the session :) 
+
+# Now R know where to look for the picture we downloaded so we can load it into R:
+
+# Load the picture and save it as "cod".
+
+cod <- readPNG("cod_lunchR_session2.png") # Or readJPEG("picture_name.jpeg") if the picture was in a .JPEG format. 
+
+# Look at the picture:
+
+plot(1:100,ty="n")
+rasterImage(cod,10,10,90,40) # X start, Y start, X end, Y end
+
+# Cool, right? :) 
+
+# Lets put it on the map:
+
+x11()
+par(mar=c(4,4,4,4))
+map(database = 'world',    
+    xlim = c(5, 28), # Latitude
+    ylim = c(54, 68), # Longitude
+    fill = T,
+    col = 'grey',
+    resolution = 0,
+    bg = 'white',
+    xlab="Longitude",
+    ylab="Latitude")
+map.axes()   # Add axis
+draw.rect()  # Add .... ? 
+points(x=11.4, y=58.3, cex=3, col="blue",pch=16) # Add a point
+text(x=11.4, y=59.3, cex=3, col="blue",pch=16,label="Lysekil") # Add a text
+axis(1, at=15 ,lab="Longitude", line=1.75, col="white", cex.axis=2) # add x axis labels. 
+axis(2, at=61 ,lab="Latitude", line=1.75, las=3,col="white", cex.axis=2)  # add y axis labels.
+rasterImage(cod,8,56.7,13,58) # This is the picture and coordinates to where it should be plotted and its size
+rasterImage(cod,14.5,55,19.5,55.8) # An here is starving Baltic Sea cod.
+
+# Homework: add the location of your working place, the name of it and an illustration to the map 
+# (if you work in Lysekil, use your own imagination). 
+
+# End Session 2 #
+
+
+
+

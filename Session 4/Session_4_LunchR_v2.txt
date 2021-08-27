@@ -1,0 +1,532 @@
+########
+# 2018.03.26 LunchR - Fourth session: Creating publish-quality figures
+########
+
+#-- Clear the workspace
+rm(list=ls(all=TRUE))
+
+# start ####
+
+#-- Read in libraries:
+# install.packages("tidyverse")
+# install.packages("RCurl")
+# install.packages("dplyr")
+# install.packages("tidyr)
+# install.packages("ggplot2")
+
+
+#library(tidyverse)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(RCurl)
+        
+# Import the data from GitHub
+
+dat_raw_wide <- read.csv(text=getURL("https://raw.githubusercontent.com/maxlindmark/LunchR_3/master/perch_FM_BT_70_04_wide.csv"))
+
+# Now, we will do the same data transformation as in Session 3: 
+
+head(dat_raw_wide) # Yuk! we will fix the column names
+
+dat_clean_w <- dat_raw_wide %>% 
+  rename(year_catch = F.e5.ngst.e5.r,
+         year_birth = F.f6.delse.e5.r,
+         age = X.c5.lder)
+
+head(dat_clean_w) # Better
+
+# Convert the data into a long format:
+# We specify that we want columns 8 to 16 to be repeated in the long format. We know this because these are the columns 
+# With the age readings which we see using the names() function:
+
+names(dat_clean_w) # X1 is column nr 8 and X9 is column nr 16.
+
+# Use the gather function
+
+dat <- dat_clean_w %>%
+  gather(reading_no, length, 8:16, na.rm = T)
+
+head(dat) # Looks good, compare with the old format:
+head(dat_clean_w)
+
+# Neat!
+
+# Remove the X in front of each Age-reading using one of the three excellent solutions we got after the last session, available on the google drive
+
+head(dat)
+
+dat <- dat %>%
+  mutate(reading_no_num = as.numeric(gsub("X","",reading_no))) # Remove the X from the column "reading_no" and save in a new column
+
+head(dat) # There we go, we created a new column without the X using mutate with the same information as in the reading_no column.
+
+# Now, we want to look at how the mean length of 2 year old perch (a fish) have changed over time from 1980 until now in two different stations (Lokaler in swedish):  
+
+
+Plot_dat_age2<-dat %>%
+  filter(year_catch > 1980, reading_no_num==2)%>% # Filter out all catches from 1980 and the 2nd age reading (length at age 2)
+  group_by(Lokal, year_catch) %>% # Group by each level we are interested in (station and year)
+  mutate(mean_length = mean(length)) # Get the mean length in a new column
+
+# Let's plot:
+
+# Base R, Figure 1 ####
+
+plot(mean_length~year_catch, data=Plot_dat_age2, col=Lokal)
+
+
+# Add some size and colour to the plot!
+plot(mean_length ~ year_catch, 
+     bg = c("coral2", "steelblue2")[as.numeric(Plot_dat_age2$Lokal)], # Change fill-colour of points. First we set the colours and then we also specific that we want to colour by the levels in "Lokal"
+     col = "black", # Change border colour of points
+     pch = 21, # Change point type from the default, hollow points
+     cex = 2.3, # Change size of points
+     data = Plot_dat_age2)
+
+
+# Increase size and colour to the axis and add axis-titles! We can do that in the par()-function, but also like below in the plots directly
+plot(mean_length ~ year_catch, 
+     bg = c("coral2", "steelblue2")[as.numeric(Plot_dat_age2$Lokal)], 
+     col = "black", 
+     pch = 21,
+     cex = 2.3, 
+     data = Plot_dat_age2,
+     cex.lab = 1.7,
+     ylab="",
+     xlab="") # Increase fonts of axis labels
+
+mtext("Year", side = 1, line = 2.5, cex = 1.5)
+mtext("Length [mm]", side = 2, line = 3.7, cex = 1.5, las = 0) # las makes it a vertical axis
+
+
+# Typical, the y-axis label doesn't fit! We need to increase the plot margins. We set such parameters in the par-function 
+par(op) # Resets the default settings, or the below settings apply to all future plots until you close the window!
+op <- par(mar = c(5, 6, 4, 5) + 0.1, # Add 0.1 to the default margin settings
+          bty = "n") # Remove the outer box of the plot
+# Hint, check current values of par arguments by doing e.g. par("mar"), par("mgp") or only par()
+
+plot(mean_length ~ year_catch, 
+     bg = c("coral2", "steelblue2")[as.numeric(Plot_dat_age2$Lokal)], 
+     col = "black", 
+     pch = 21, 
+     cex = 2.3,
+     data = Plot_dat_age2,
+     cex.lab = 1.7,
+     ylab="",
+     xlab="")
+
+mtext("Year", side = 1, line = 2.5, cex = 1.5)
+mtext("Length [mm]", side = 2, line = 3.7, cex = 1.5, las = 0) 
+
+
+# This looks a bit better, but when removing the boundary, we left some gaps in the x-axis. Often you anyway skip the automatic axis to get full control. Next we'll try that, and add them manually
+
+x.seq <- seq(min(Plot_dat_age2$year_catch), max(Plot_dat_age2$year_catch)+1, 2) # values for x-axis
+
+par(op) 
+op <- par(mar = c(5, 6, 4, 5) + 0.1, 
+          bty = "n")
+
+plot(mean_length ~ year_catch, 
+     bg = c("coral2", "steelblue2")[as.numeric(Plot_dat_age2$Lokal)], 
+     col = "black", 
+     pch = 21, 
+     cex = 2.3,
+     data = Plot_dat_age2,
+     cex.lab = 1.7,
+     ylab="",
+     xlab="",
+     axes = FALSE) # remove automatic axes)
+
+mtext("Year", side = 1, line = 2.5, cex = 1.5)
+mtext("Length [mm]", side = 2, line = 3.7, cex = 1.5, las = 0) 
+
+axis(1, at = x.seq) # Add an axis on side 1 (bottom)
+axis(2) # Add an axis on side 2 (left) 
+
+
+# Now it's time to look at it in a free plot window, using x11() or dev.new()
+
+x11()
+
+x.seq <- seq(min(Plot_dat_age2$year_catch), max(Plot_dat_age2$year_catch)+1, 2)
+
+par(op) 
+op <- par(mar = c(5, 6, 4, 5) + 0.1, 
+          bty = "n")
+
+plot(mean_length ~ year_catch, 
+     bg = c("coral2", "steelblue2")[as.numeric(Plot_dat_age2$Lokal)], 
+     col = "black", 
+     pch = 21, 
+     cex = 2.3,
+     data = Plot_dat_age2,
+     cex.lab = 1.7,
+     ylab="",
+     xlab="",
+     axes = FALSE)
+
+mtext("Year", side = 1, line = 2.5, cex = 1.5)
+mtext("Length [mm]", side = 2, line = 3.7, cex = 1.5, las = 0) 
+
+axis(1, at = x.seq)
+axis(2) 
+
+legend("topleft", c("BT", "FM"), cex=1.5, pch=16, bty="n", col=c("coral2", "steelblue2")) # Here we first say where the legend should be, what it should say, how large it should be, what point or linetype, removing outer border and specify colors, in that order!
+
+
+
+# Now we are getting really close, we just need to add model fit + uncertainty... There's no built in function so we need to fit the model and extract fits + error manually!
+
+# Fit linear models and add prediction + confidence interval to plot
+mbt <- subset(Plot_dat_age2, Lokal == "BT") # Model data for BT
+m.bt <- lm(mean_length ~ year_catch, data=mbt) # Fit a linear model to make a prediction
+
+mfm <- subset(Plot_dat_age2, Lokal == "FM") # Model data for FM
+m.fm <- lm(mean_length ~ year_catch, data=mfm) # Fit a linear model to make a prediction
+
+# This gives warning because we predict on the same data we fit, nothing to worry about in this case! 
+mbt$pred <- predict(m.bt, interval="confidence")[,1] 
+mbt$low <- predict(m.bt, interval="confidence")[,2]
+mbt$upp <- predict(m.bt, interval="confidence")[,3]
+
+mfm$pred <- predict(m.fm, interval="confidence")[,1]
+mfm$low <- predict(m.fm, interval="confidence")[,2]
+mfm$upp <- predict(m.fm, interval="confidence")[,3]
+
+
+# Now, reproduce the old plot
+x.seq <- seq(min(Plot_dat_age2$year_catch), max(Plot_dat_age2$year_catch)+1, 2)
+
+
+par(op) 
+op <- par(mar = c(5, 6, 4, 5) + 0.1, 
+          bty = "n")
+
+plot(mean_length ~ year_catch, 
+     bg = c("coral2", "steelblue2")[as.numeric(Plot_dat_age2$Lokal)], 
+     col = "black", 
+     pch = 21, 
+     cex = 2.3,
+     data = Plot_dat_age2,
+     cex.lab = 1.7,
+     ylab="",
+     xlab="",
+     axes = FALSE)
+
+mtext("Year", side = 1, line = 2.5, cex = 1.5)
+mtext("Length [mm]", side = 2, line = 3.7, cex = 1.5, las = 0) 
+
+axis(1, at = x.seq)
+axis(2) 
+
+
+legend("topleft", c("BT", "FM"), cex=1.5, pch=16, bty="n", col=c("coral2", "steelblue2"))
+
+#... and add the predictions + error for each area!
+lines(mbt$pred ~ mbt$year_catch, lwd = 2, col="coral2") # Add a prediction line BT 
+lines(mbt$low ~ mbt$year_catch, lwd = 2, lty=2, col="coral2") # Add a lower CI line BT 
+lines(mbt$upp ~ mbt$year_catch, lwd = 2, lty=2, col="coral2") # Add a upper CI line BT
+
+lines(mfm$pred ~ mfm$year_catch, lwd = 2, col="steelblue2") # Add a prediction line FM
+lines(mfm$low ~ mfm$year_catch, lwd = 2, lty=2, col="steelblue2") # Add a lower CI line FM
+lines(mfm$upp ~ mfm$year_catch, lwd = 2, lty=2, col="steelblue2") # Add a upper CI line FM 
+
+# If you want to add text to a plot, e.g. model equation or for indicating subpanels, use mtext!!
+mtext(expression(paste(italic("DONE!!"))), side = 1, line = -20, cex = 3, col= "pink2")
+
+
+
+# Compare to the default plot Base R: ####
+par(op) # reset to default "par" settings
+x11() # Open new window
+plot(mean_length ~ year_catch, data = Plot_dat_age2, col=Lokal)
+
+
+# HINT: If you want the x- and y axes to line up at the origin, see the below code!     
+x.seq <- seq(min(Plot_dat_age2$year_catch), max(Plot_dat_age2$year_catch)+1, 2)
+y.seq <- seq(round(min(Plot_dat_age2$mean_length)), round(max(Plot_dat_age2$mean_length))+1, 4) # now we also need to provide a range for the y-axis!
+
+par(op) 
+op <- par(mar = c(5, 6, 4, 5) + 0.1, 
+          bty = "n")
+
+plot(mean_length ~ year_catch, 
+     bg = c("coral2", "steelblue2")[as.numeric(Plot_dat_age2$Lokal)], 
+     col = "black", 
+     pch = 21, 
+     cex = 2.3,
+     data = Plot_dat_age2,
+     cex.lab = 1.7,
+     ylab="",
+     xlab="",
+     axes = FALSE,
+     xaxs="i", yaxs="i") # These two arguments make the y- and x-axis connect at the origion. Note though that it crops any points so you need to make extra space for that in the x and y ranges!
+
+mtext("Year", side = 1, line = 2.5, cex = 1.5)
+mtext("Length [mm]", side = 2, line = 3.7, cex = 1.5, las = 0) 
+
+axis(1, at = x.seq)
+axis(2, at = y.seq) 
+
+
+
+#### How to save a plot:
+# Remove the below hashtags
+
+# setwd("//storage-og.slu.se//home$//mxli0002//Desktop")
+# pdf("file2.pdf") 
+# make your plot!
+# dev.off()
+# check your working directory, you should now have a nice pdf of your plot!!
+
+
+# ggplot2, Figure 1 ####
+
+ggplot(Plot_dat_age2, aes(x=year_catch, y=mean_length, colour=Lokal))+
+  geom_point()
+
+# Publishable figure using GGplot2:
+
+# The first thing we want to do is to get rid of the grey background:
+# GGplot have several themes for this (look at the ggplot cheat sheet), we think theme_bw() and theme_classic() are nice:
+
+ggplot(Plot_dat_age2, aes(x=year_catch, y=mean_length, colour=Lokal))+
+  geom_point()+
+    theme_classic()
+
+# vs.
+
+ggplot(Plot_dat_age2, aes(x=year_catch, y=mean_length, colour=Lokal))+
+  geom_point()+
+  theme_bw()
+
+# We will continue using the theme_bw()
+
+# Next step is to fix the y-axis, e.g. change the label, number of breaks and where the breaks should be and also the limit of the axis:
+
+ggplot(Plot_dat_age2, aes(x=year_catch, y=mean_length, colour=Lokal))+
+  geom_point()+
+  theme_bw()+
+  scale_y_continuous(name="Mean length (mm)",                # Axis label
+                     breaks=c(100, 120, 140, 160, 180, 200), # Axis breaks with tick marks
+                     limits=c(90, 200))                      # Y axis limits
+
+# Next step is to fix the x-axis in a similar way:
+  
+ggplot(Plot_dat_age2, aes(x=year_catch, y=mean_length, colour=Lokal))+
+  geom_point()+
+  theme_bw()+
+  scale_y_continuous(name="Mean length (mm)",     
+                     breaks=c(100, 120, 140, 160, 180, 200), 
+                     limits=c(90, 200))+ 
+ scale_x_continuous(name="Year",                                         # Axis label
+                     breaks=c(1981, 1985, 1989, 1993, 1997, 2001, 2005), # Axis breaks with tick marks (4 years intervall).
+                     limits=c(1980, 2005))                               # Axis limits
+  
+  
+# Next step is to make the axis features larger using several arguments in one theme()+:
+
+ggplot(Plot_dat_age2, aes(x=year_catch, y=mean_length, colour=Lokal))+
+  geom_point()+
+  theme_bw()+
+  scale_y_continuous(name="Mean length (mm)",     
+                     breaks=c(100, 120, 140, 160, 180, 200), 
+                     limits=c(90, 200))+ 
+  scale_x_continuous(name="Year",         
+                     breaks=c(1981, 1985, 1989, 1993, 1997, 2001, 2005), 
+                     limits=c(1980, 2005))+
+  theme(axis.title.x = element_text(size=25),                # Change the size of the x axis label
+        axis.title.y = element_text(size=25),                # Change the size of the y axis label
+        axis.text.x = element_text(size=20, colour="black"), # Change the size of the x axis tick-labels and make them black
+        axis.text.y = element_text(size=20, colour="black"), # Change the size of the y axis tick-labels and make them black
+        axis.ticks.length = unit(.25, "cm"))                 # Change the length of the tick marks
+
+# Now, the axis are starting to look good. The points are still very small so let us make them bigger and in other colours:
+# We do this in the geom_point() function
+
+ggplot(Plot_dat_age2, aes(x=year_catch, y=mean_length, colour=Lokal))+
+  geom_point(size=20)+ # to big..
+  theme_bw()+
+  scale_y_continuous(name="Mean length (mm)",     
+                     breaks=c(100, 120, 140, 160, 180, 200), 
+                     limits=c(90, 200))+ 
+  scale_x_continuous(name="Year",         
+                     breaks=c(1981, 1985, 1989, 1993, 1997, 2001, 2005), 
+                     limits=c(1980, 2005))+
+  theme(axis.title.x = element_text(size=25), 
+        axis.title.y = element_text(size=25), 
+        axis.text.x = element_text(size=20, colour="black"), 
+        axis.text.y = element_text(size=20, colour="black"), 
+        axis.ticks.length = unit(.25, "cm")) 
+
+# Try another value for size:
+  
+ggplot(Plot_dat_age2, aes(x=year_catch, y=mean_length, colour=Lokal))+
+  geom_point(size=5)+ # Better!
+  theme_bw()+
+  scale_y_continuous(name="Mean length (mm)",    
+                     breaks=c(100, 120, 140, 160, 180, 200), 
+                     limits=c(90, 200))+ 
+  scale_x_continuous(name="Year",         
+                     breaks=c(1981, 1985, 1989, 1993, 1997, 2001, 2005), 
+                     limits=c(1980, 2005))+
+  theme(axis.title.x = element_text(size=25), 
+        axis.title.y = element_text(size=25), 
+        axis.text.x = element_text(size=20, colour="black"), 
+        axis.text.y = element_text(size=20, colour="black"), 
+        axis.ticks.length = unit(.25, "cm")) 
+  
+# If we want other colours? We can change these manually: 
+
+ggplot(Plot_dat_age2, aes(x=year_catch, y=mean_length, colour=Lokal))+
+  geom_point(size=5)+ 
+  scale_color_manual(values=c("coral2", "steelblue2"))+ # Specify the colours you want manually.
+  theme_bw()+
+  scale_y_continuous(name="Mean length (mm)",     
+                     breaks=c(100, 120, 140, 160, 180, 200), 
+                     limits=c(90, 200))+ 
+  scale_x_continuous(name="Year",         
+                     breaks=c(1981, 1985, 1989, 1993, 1997, 2001, 2005), 
+                     limits=c(1980, 2005))+
+  theme(axis.title.x = element_text(size=25), 
+        axis.title.y = element_text(size=25), 
+        axis.text.x = element_text(size=20, colour="black"), 
+        axis.text.y = element_text(size=20, colour="black"), 
+        axis.ticks.length = unit(.25, "cm")) 
+
+# Lets change the legend title from "Lokal" to Area in the scale_colour_manual(): 
+
+ggplot(Plot_dat_age2, aes(x=year_catch, y=mean_length, colour=Lokal))+
+  geom_point(size=5)+
+  scale_color_manual(name="Area",values=c("coral2", "steelblue2"))+ # Add the argumnet name="Area"
+  theme_bw()+
+  scale_y_continuous(name="Mean length (mm)",   
+                     breaks=c(100, 120, 140, 160, 180, 200), 
+                     limits=c(90, 200))+ 
+  scale_x_continuous(name="Year",         
+                     breaks=c(1981, 1985, 1989, 1993, 1997, 2001, 2005), 
+                     limits=c(1980, 2005))+
+  theme(axis.title.x = element_text(size=25), 
+        axis.title.y = element_text(size=25), 
+        axis.text.x = element_text(size=20, colour="black"), 
+        axis.text.y = element_text(size=20, colour="black"), 
+        axis.ticks.length = unit(.25, "cm")) 
+
+  
+# Lets make the legend text and symbols larger
+
+ggplot(Plot_dat_age2, aes(x=year_catch, y=mean_length, colour=Lokal))+
+  geom_point(size=5)+ 
+  scale_color_manual(name="Area",values=c("coral2", "steelblue2"))+ 
+  theme_bw()+
+  scale_y_continuous(name="Mean length (mm)",     
+                     breaks=c(100, 120, 140, 160, 180, 200), 
+                     limits=c(90, 200))+ 
+  scale_x_continuous(name="Year",         
+                     breaks=c(1981, 1985, 1989, 1993, 1997, 2001, 2005), 
+                     limits=c(1980, 2005))+
+  theme(axis.title.x = element_text(size=25), 
+        axis.title.y = element_text(size=25), 
+        axis.text.x = element_text(size=20, colour="black"), 
+        axis.text.y = element_text(size=20, colour="black"), 
+        axis.ticks.length = unit(.25, "cm"))+ 
+  theme(legend.title = element_text(colour="black", size=20),    # Change size of the legend title
+        legend.text = element_text(colour="black", size = 15),   # Change size of the legend text next to the symbols
+        legend.key.height = unit(1,"cm"),                        # Change size of the legend height
+        legend.key.width = unit(1,"cm"))                         # Change size of the legend width
+
+# Let’s add linear regression lines to the plot:
+
+ggplot(Plot_dat_age2, aes(x=year_catch, y=mean_length, colour=Lokal))+
+  geom_point(size=5)+ 
+  scale_color_manual(name="Area",values=c("coral2", "steelblue2"))+ 
+  stat_smooth(method="lm", se=TRUE, show.legend=FALSE)+ # Regression lines with confidence intervall (grey area around the lines)
+  theme_bw()+
+  scale_y_continuous(name="Mean length (mm)",     
+                     breaks=c(100, 120, 140, 160, 180, 200), 
+                     limits=c(90, 200))+ 
+  scale_x_continuous(name="Year",        
+                     breaks=c(1981, 1985, 1989, 1993, 1997, 2001, 2005), 
+                     limits=c(1980, 2005))+
+  theme(axis.title.x = element_text(size=25), 
+        axis.title.y = element_text(size=25), 
+        axis.text.x = element_text(size=20, colour="black"), 
+        axis.text.y = element_text(size=20, colour="black"), 
+        axis.ticks.length = unit(.25, "cm"))+ 
+  theme(legend.title = element_text(colour="black", size=20),    
+        legend.text = element_text(colour="black", size = 15),   
+        legend.key.height = unit(1,"cm"),                        
+        legend.key.width = unit(1,"cm"))                                             
+
+
+# There we go!
+
+# Compare the default plot with this one by saving them into two objects and plot them against each other:
+
+Publishable<-ggplot(Plot_dat_age2, aes(x=year_catch, y=mean_length, colour=Lokal))+
+  geom_point(size=5)+                                               # Better!
+  scale_color_manual(name="Area",values=c("coral2", "steelblue2"))+ # Specify the colours you want manually.
+  stat_smooth(method="lm", se=TRUE, show.legend=FALSE)+ # Regression lines with confidence intervall (grey area around the lines)
+  theme_bw()+
+  scale_y_continuous(name="Mean length (mm)",                    # Axis label
+                     breaks=c(100, 120, 140, 160, 180, 200),     # Axis breaks with tick marks
+                     limits=c(90, 200))+                         # Axis limits
+  scale_x_continuous(name="Year",                                # Axis label
+                     breaks=c(1981, 1985, 1989, 1993, 1997, 2001, 2005), # Axis breaks with tick marks (4 years intervall).
+                     limits=c(1980, 2005))+
+  theme(axis.title.x = element_text(size=25),                    # Change the size of the x axis label
+        axis.title.y = element_text(size=25),                    # Change the size of the y axis label
+        axis.text.x = element_text(size=20, colour="black"),     # Change the size of the x axis tick-labels and make them black
+        axis.text.y = element_text(size=20, colour="black"),     # Change the size of the y axis tick-labels and make them black
+        axis.ticks.length = unit(.25, "cm"))+                    # Change the length of the tick marks
+  theme(legend.title = element_text(colour="black", size=20),    # Change size of the legend title
+        legend.text = element_text(colour="black", size = 15),   # Change size of the legend text next to the symbols
+        legend.key.height = unit(1,"cm"),                        # Change size of the legend height
+        legend.key.width = unit(1,"cm"))                         # Change size of the legend width     
+
+Default <- ggplot(Plot_dat_age2, aes(x=year_catch, y=mean_length, colour=Lokal))+
+  geom_point()
+
+# Compare default vs publishable ggplot2 ####
+
+#install.packages("gridExtra") # Used in session 2
+library(gridExtra)
+x11()
+grid.arrange(Publishable, Default, ncol=2, nrow=1)
+
+# Save ggplot2 ####
+
+# Now, we have to save it into a high-quality file. 
+
+# You can use the x11() function, re-size the plot into the shape you want and then save the plot as a PDF using File -> 
+# Save as -> Pick your format. 
+
+x11()
+ggplot(Plot_dat_age2, aes(x=year_catch, y=mean_length, colour=Lokal))+
+  geom_point(size=5)+ 
+  scale_color_manual(name="Area",values=c("coral2", "steelblue2"))+ 
+  stat_smooth(method="lm", show.legend=FALSE)+ 
+  theme_bw()+
+  scale_y_continuous(name="Mean length (mm)",     
+                     breaks=c(100, 120, 140, 160, 180, 200), 
+                     limits=c(90, 200))+ 
+  scale_x_continuous(name="Year",         
+                     breaks=c(1981, 1985, 1989, 1993, 1997, 2001, 2005), 
+                     limits=c(1980, 2005))+
+  theme(axis.title.x = element_text(size=25), 
+        axis.title.y = element_text(size=25), 
+        axis.text.x = element_text(size=20, colour="black"), 
+        axis.text.y = element_text(size=20, colour="black"), 
+        axis.ticks.length = unit(.25, "cm"))+ 
+  theme(legend.title = element_text(colour="black", size=20),    
+        legend.text = element_text(colour="black", size = 15),   
+        legend.key.height = unit(1,"cm"),                        
+        legend.key.width = unit(1,"cm"))                            
+
+
+# Or use the same code as we did for the base R example. 
+# Both methods work for Base R and GGplot2 plots. 
+
+## End Session 4 LunchR ##

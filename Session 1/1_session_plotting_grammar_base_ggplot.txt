@@ -1,0 +1,211 @@
+########
+# 2018.03.07 LunchR - First session: exploring plotting grammar in R and base
+########
+
+#-- It's often a good idea to start by clearing the workspace. You might have old variables saved in the workspace that you don't want to reuse by mistake! Remember though, this little function does not clear everything, like loaded packages. To do a full clear, type q(), which will exit the workspace completely
+rm(list=ls(all=TRUE))
+
+#-- Read in libraries:
+# tidyverse reads all packages in the tidyverse, in which ggplot and dplyr are found
+# If you haven't installed it before, use the "install.packages" function below
+#install.packages("tidyverse")
+library(tidyverse)
+
+
+## Simulate data -------------------------------------------- 
+#-- For this first exercise we are going to simulate some data to see the difference between long (tidy) and wide data, which will come back throughout when we use ggplot or base R
+
+#-- We create two dataframes called "tidy" (long data) and "wide" (wide data). Long means that each row is a unique observation, and the grouping variable is an element in a column. In the wide data, groups are in different columns
+ 
+#-- Generate data: 10 random uniform variables
+
+group1 <- runif(10)
+group2 <- runif(10) + 0.2 # Make one group slightly larger
+
+
+# Store them in a "wide" data frame w
+
+wide <- data.frame(x = 1:10, 
+                   a = group1, 
+                   b = group2)
+head(wide)
+
+
+# Now use the same random variables but bind them together in a "tidy/long" data frame called tidy
+
+tidy <- data.frame(x = rep(1:10, 2), 
+                   y = c(group1, group2), 
+                   group = c(rep("a", 10), rep("b", 10)))
+head(tidy)
+
+
+## Long (tidy) data ----------------------------------------
+# ggplot ------------
+
+#-- As in the presentation, make a ggplot -> provide data -> set aesthetics(aes) -> add layers (points, lines etc)
+
+ggplot(data = tidy, aes(x, y)) + 
+       geom_point()
+       
+
+#-- Now we want to colour by group, specify in aes()
+
+ggplot(data = tidy, aes(x, y, colour = group)) + 
+       geom_point(size=5)
+       
+       
+#-- Or we can stick with black and white and separate groups by linetype
+
+ggplot(data = tidy, aes(x, y, linetype = group)) + 
+       geom_line(size=5)
+       
+ 
+#-- One can also add several layers at once (note that the grouping is the same for all layers until you specify otherwise using aes() inside the layer!)
+
+ggplot(data = tidy, aes(x, y, colour = group)) + 
+       geom_point(size=10) +
+       geom_line(size=5, alpha=0.2) # alpha sets the transparency, nice for prediction/confidence intervals or when data points overlap each other
+       
+       
+#-- You can also change the appearance of a layer without linking it to a grouping variable. Note that colour now isn't mapped to the data!
+
+ggplot(data = tidy, aes(x, y, linetype = group)) + 
+       geom_line(size=5, col=c("tomato3"), alpha = 0.5)
+       
+       
+# **** Q **** What is the argument for point type? Either to change for all point types or to map to a variable?
+
+#https://www.google.se/search?rlz=1C1CHBD_svSE722SE722&ei=cnaUWswlsI-aBcu2oeAK&q=geom+point&oq=geom+point&gs_l=psy-ab.3..0i20i263k1l2j0j0i67k1j0j0i67k1j0i10k1j0l2j0i10k1.2309.3706.0.3848.10.10.0.0.0.0.170.721.4j3.7.0....0...1c.1.64.psy-ab..3.7.719...35i39k1j0i10i67k1.0.6vYiGJ6guU4
+
+#http://www.sthda.com/english/wiki/ggplot2-point-shapes
+
+
+
+#-- A nice feature of a ggplot is that it can be saved into an object. This is useful when you have a long script with a lot of exploratory figures that you don't want to open every time you run through the script, but don't want to hashtag them
+
+plot_a <- ggplot(data = tidy, aes(x, y, linetype = group)) + 
+                 geom_line(size=5)
+                 
+plot_a 
+
+#-- And you can always call it and modify it further!
+
+plot_a + theme_bw() # notice any difference? We will go through different themes later
+
+
+#-- You can also skip grouping variables and instead split by window. This is neat when you have too many grouping variables to fit in on window
+
+ggplot(data = tidy, aes(x, y)) +
+       geom_point(size=5) +     
+       facet_wrap(~group) 
+       
+       
+#-- Let's add some more data into the long format.
+# We'll do it the quick and dirty way, since we already have some code from above - just add two new groups (c and d). save in new data.frame, l2
+
+tidy2 <- data.frame(x = rep(1:10, 2), 
+                    y = c(group1, group2), 
+                    group = c(rep("c", 10), rep("d", 10)))
+
+# Since it uses the same random variables as in the dataframe tidy, we want to add some noise to it before merging them together. We do that by multiplying with another randomly drawn set of variables:
+
+tidy2$y <- tidy2$y * runif(n=20, min=0.5, max=1)
+
+
+# Now merge the data together using rbind (build an object by appending rows =  rbind). Let's first add a new grouping variable to separate the old and new data
+
+tidy$group2 <- "old"
+tidy2$group2 <- "new"
+
+tidy3 <- rbind(tidy, tidy2)
+
+
+#-- Plot the data in separate windows
+ggplot(data = tidy3, aes(x, y)) +
+       geom_point(size=5) +     
+       facet_wrap(~group, ncol=2) 
+       
+       
+#-- ***Q1*** How would you plot points, connected by lines, in a single plot where "group2" is distinguished by linetype and "group" by colour? See at the end of the script!
+
+
+
+# Base R ------------
+
+plot(y ~ x, data = tidy)
+
+
+#-- You can also colour by groups in base R
+
+plot(y ~ x, data = tidy, col=group, pch=16, cex=3) # pch changes to solid points and cex increases the size 
+
+ 
+#-- Separate groups by linetype
+
+plot(y ~ x, data = tidy, type="l", lty=group) # This doesn't work because base R doesn't know how to group the data. So we need to manually assign a linetype (lty) to a subset of the data containing either group a or b, and then add a line onto the existing plot
+
+plot(y ~ x, data = subset(tidy, group=="a"), type="l") 
+  lines(y ~ x, data = subset(tidy, group=="b"), lty=3) # Note that we don't need "type="l", as in line anymore since we use the lines argument. We could also have used points(), which is the default". Notice also the y-limits are not adapted to the data provided in lines but only the data that goes in the first plot. Already in this very simple plot you can see why ggplot outperforms base R as soon as you have grouping variables
+  
+# ... But this can be fixed using the ylim-argument in plot:
+
+plot(y ~ x, data = subset(tidy, group=="a"), type="l", ylim=c(0,1.2)) 
+  lines(y ~ x, data = subset(tidy, group=="b"), lty=3) 
+ 
+
+#-- Let's try varying point types (argument for point type is pch)
+
+plot(y ~ x, data = subset(tidy, group=="a"), ylim=c(0,1.2)) 
+  points(y ~ x, data = subset(tidy, group=="b"), pch=3) 
+
+
+#-- We can also do manual colours and point types and sizes
+
+plot(y ~ x, data = subset(tidy, group=="a"), pch=15, ylim=c(0,1.2), cex=3, col="steelblue3") 
+  points(y ~ x, data = subset(tidy, group=="b"), pch=16, cex=3, col="tomato3") 
+
+
+#-- Note the differences in argument names (ggplot/base): size/cex, shape/pch, colour/col, linetype/lty
+
+
+## Wide data ---------------------------------------- 
+
+
+#-- If you remember from the presentation, and from the examples above, ggplot becomes extremely efficient with tidy (long) data, and less so with wide data, because now the group is a column rather than a level of the same y-variable
+
+#-- You can specify new data frames in ggplot (i.e. you can produce an empty ggplot and add geoms that have only the wanted columns). But then you are losing the benefit of ggplot in the first place! So, if your data is wide, you might want to transform the data before plotting to take advantage of the strengths of ggplot. We will talk about that in session 3
+
+#-- For now we will show you how to specify different data/aes for each geom:
+
+ggplot() + 
+       geom_point(data=wide, aes(x, a), size=5, colour="darkorange") +
+       geom_point(data=wide, aes(x, b), size=5, colour="grey10") 
+       
+       
+# **** Q **** What is the drawback of splitting data manually inside the geom rather than grouping it in the aes(), like we did  argument for point type? We can compare:
+
+# Open a new plot window:
+x11()
+
+# and replot the graph we saved as "plot_a"
+plot_a
+    
+    
+    
+#-- And here's the base R equivalent (not very different from the ggplot version!). Note that it's a lot easier to add a legend in this case (but they are not made automatically as in ggplot, if there is a grouping variable)
+
+plot(NULL, xlim=c(0, 10), ylim=c(0, max(wide$a)))
+     points(a ~ x, data=wide, col = "tomato3", pch=16, cex=2)
+     points(b ~ x, data=wide, col = "steelblue", pch=16, cex=2)
+     legend("topright", c("a", "b"), col=c("tomato3", "steelblue"), pch=16, bty="n", cex=1.2) # Notice how there's no data in the plot argument - just the basic plot. If it's clear you add multiple lines or plots into a graph, this approach makes it a little bit more clear in terms of what goes in.
+       
+       
+
+       
+# ***Q1*** ---------------------------------------------
+# how would you plot points, connected by lines, in a single plot where "group2" is distinguished by linetype and and "group" by colour?
+ggplot(data = tidy3, aes(x, y, linetype = group2, colour = group)) +
+       geom_point(size=5) +
+       geom_line(size=2, alpha=0.5)
+
+
